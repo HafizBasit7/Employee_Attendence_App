@@ -29,7 +29,7 @@ export default function ProfileScreen({ navigation }) {
         {/* Profile Card */}
         <View style={styles.profileCard}>
           <Image
-            source={{ uri: 'https://randomuser.me/api/portraits/men/32.jpg' }}
+            source={require('../../assets/avatar.png')} 
             style={styles.profileImage}
           />
           <View style={styles.profileInfo}>
