@@ -9,42 +9,50 @@ A fully responsive **React Native Expo** app built for [Employee Attendence](htt
 <table>
   <tr>
     <td align="center">
-      <img src="../screenshots/SplashScreen.jpg" width="250"/>
+      <img src="./src/screenshots/SplashScreen.jpg" width="250"/>
     </td>
     <td align="center">
-      <img src="../screenshots/Login.jpg" width="250"/>
-    </td>
-  </tr>
-  <tr>
-    <td align="center">
-      <img src="../screenshots/CheckIn.jpg" width="250"/>
-    </td>
-    <td align="center">
-      <img src="../screenshots/Assignments.jpg" width="250"/>
+      <img src="./src/screenshots/Login.jpg" width="250"/>
     </td>
   </tr>
   <tr>
     <td align="center">
-      <img src="../screenshots/Ass_Details.jpg" width="250"/>
+      <img src="./src/screenshots/CheckIn.jpg" width="250"/>
     </td>
     <td align="center">
-      <img src="../screenshots/History.jpg" width="250"/>
+      <img src="./src/screenshots/Assignments.jpg" width="250"/>
     </td>
   </tr>
   <tr>
     <td align="center">
-      <img src="../screenshots/CheckOut.jpg" width="250"/>
+      <img src="./src/screenshots/Ass_Details.jpg" width="250"/>
     </td>
     <td align="center">
-      <img src="../screenshots/Profile.jpg" width="250"/>
+      <img src="./src/screenshots/History.jpg" width="250"/>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="./src/screenshots/CheckOut.jpg" width="250"/>
+    </td>
+    <td align="center">
+      <img src="./src/screenshots/Profile.jpg" width="250"/>
     </td>
   </tr>
     <tr>
     <td align="center">
-      <img src="../screenshots/Settings.jpg" width="250"/>
+      <img src="./src/screenshots/Settings.jpg" width="250"/>
     </td>
     <td align="center">
-      <img src="../screenshots/SignOut.jpg" width="250"/>
+      <img src="./src/screenshots/SignOut.jpg" width="250"/>
+    </td>
+  </tr>
+     <tr>
+    <td align="center">
+      <img src="./src/screenshots/ForgotPassw.jpg" width="250"/>
+    </td>
+    <td align="center">
+      <img src="./src/screenshots/ResetPassw.jpg" width="250"/>
     </td>
   </tr>
 
