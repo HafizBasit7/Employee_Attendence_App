@@ -47,14 +47,7 @@ A fully responsive **React Native Expo** app built for [Employee Attendence](htt
       <img src="../screenshots/SignOut.jpg" width="250"/>
     </td>
   </tr>
-     <tr>
-    <td align="center">
-      <img src="../screenshots/ForgotPassw.jpg" width="250"/>
-    </td>
-    <td align="center">
-      <img src="../screenshots/ResetPassw.jpg" width="250"/>
-    </td>
-  </tr>
+
 </table>
 
 ---
