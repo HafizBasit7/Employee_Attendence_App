@@ -1,16 +1,90 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Image } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, KeyboardAvoidingView, ScrollView, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../../theme/colors';
+import { useAuth } from '../../context/AuthContext';
+import Loader from '../../components/Loader';
+import AlertModal from '../../components/AlertModal';
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    type: 'info',
+    title: '',
+    message: '',
+  });
+
+  const { login } = useAuth();
+
+  const handleLogin = async () => {
+    if (!email.trim() || !password.trim()) {
+      setAlertConfig({
+        visible: true,
+        type: 'warning',
+        title: 'Validation Error',
+        message: 'Please enter both email and password.',
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const result = await login(email.trim(), password);
+      
+      if (result.success) {
+        // Navigation will be handled by RootNavigator based on auth state
+        setAlertConfig({
+          visible: true,
+          type: 'success',
+          title: 'Welcome!',
+          message: 'Login successful. Redirecting...',
+        });
+        
+        // Navigate based on user role
+        setTimeout(() => {
+          navigation.navigate(result.data.isAdmin ? 'AdminMain' : 'Main');
+        }, 1500);
+      } else {
+        setAlertConfig({
+          visible: true,
+          type: 'error',
+          title: 'Login Failed',
+          message: result.message || 'Invalid credentials. Please try again.',
+        });
+      }
+    } catch (error) {
+      setAlertConfig({
+        visible: true,
+        type: 'error',
+        title: 'Error',
+        message: 'Something went wrong. Please try again.',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const closeAlert = () => {
+    setAlertConfig({ ...alertConfig, visible: false });
+  };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
+      <KeyboardAvoidingView 
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+        <ScrollView 
+          contentContainerStyle={styles.scrollContainer}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.container}>
       <View style={styles.logoContainer}>
           {/* <Text style={styles.logoText}>K@TEC</Text>
           <Text style={styles.subtitle}>ROHRLETTUNOBBAU UND INDUSTRIEBERVICE</Text> */}
@@ -61,15 +135,6 @@ export default function LoginScreen({ navigation }) {
               </View>
               <Text style={styles.rememberMeText}>Remember Me</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.rememberMeButton}
-              onPress={() => setIsAdmin(!isAdmin)}
-            >
-              <View style={[styles.checkbox, isAdmin && styles.checkedBox]}>
-                {isAdmin && <View style={styles.checkmark} />}
-              </View>
-              <Text style={styles.rememberMeText}>Login as Admin</Text>
-            </TouchableOpacity>
           </View>
         </View>
 
@@ -80,15 +145,16 @@ export default function LoginScreen({ navigation }) {
          
           <TouchableOpacity 
             style={styles.loginButton} 
-            onPress={() => {
-              navigation.navigate(isAdmin ? 'AdminMain' : 'Main');
-            }}
+            onPress={handleLogin}
+            disabled={isLoading}
           >
-            <Text style={styles.loginButtonText}>Login</Text>
+            <Text style={styles.loginButtonText}>
+              {isLoading ? 'Logging in...' : 'Login'}
+            </Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.forgotPassword} onPress={()=> {navigation.navigate('ForgotPass')}}>
+          {/* <TouchableOpacity style={styles.forgotPassword} onPress={()=> {navigation.navigate('ForgotPass')}}>
             <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
 
         {/* Footer */}
@@ -99,7 +165,19 @@ export default function LoginScreen({ navigation }) {
             <Text style={styles.linkText}>Privacy Policy</Text>
           </Text>
         </View>
-      </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      <Loader visible={isLoading} text="Logging in..." />
+      
+      <AlertModal
+        visible={alertConfig.visible}
+        type={alertConfig.type}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        onClose={closeAlert}
+      />
     </SafeAreaView>
   );
 }
@@ -109,16 +187,24 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  container: {
+  keyboardAvoidingView: {
     flex: 1,
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
+  container: {
     padding: 24,
+    paddingTop: 40,
+    paddingBottom: 40,
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 50,
+    marginBottom: 30,
   },
   header: {
-    marginBottom: 32,
+    marginBottom: 24,
   },
   title: {
     fontSize: 28,
@@ -133,23 +219,24 @@ const styles = StyleSheet.create({
     textAlign:'center'
   },
   section: {
-    marginBottom: 14,
+    marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: colors.textPrimary,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   input: {
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 38,
     padding: 16,
-    fontSize: 12,
+    fontSize: 14,
     backgroundColor: colors.card,
-    marginBottom: 16,
+    marginBottom: 12,
     color: colors.textPrimary,
+    minHeight: 50,
   },
   optionsContainer: {
     flexDirection: 'column',
@@ -209,7 +296,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   footer: {
-    marginTop: 24,
+    marginTop: 16,
   },
   footerText: {
     textAlign: 'center',

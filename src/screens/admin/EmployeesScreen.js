@@ -26,6 +26,7 @@ export default function EmployeesScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>Employees</Text>
       <FlatList
+      showsVerticalScrollIndicator={false}
         data={dummyEmployees}
         renderItem={renderEmployee}
         keyExtractor={item => item.id}

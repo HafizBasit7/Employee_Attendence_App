@@ -20,10 +20,12 @@ export default function RootNavigator() {
       <Stack.Screen name="ForgotPass" component= {ForgotPass} />
       <Stack.Screen name="VerifScreen" component= {VerificationCodeScreen} />
       <Stack.Screen name="ResetPass" component={ResetPasswordScreen} />
-      {/* User Flow */}
-      <Stack.Screen name="Main" component={MainTabs} />
-      <Stack.Screen name="TaskScreen" component={TasksScreen} />
-      <Stack.Screen name="Profile" component={ProfileStack} />
+              {/* User Flow */}
+        <Stack.Screen name="Main" component={MainTabs} />
+        <Stack.Screen name="TaskScreen" component={TasksScreen} />
+        <Stack.Screen name="TaskDetailsScreen" component={require('../screens/TaskDetailsScreen').default} />
+        <Stack.Screen name="NotificationScreen" component={require('../screens/NotificationScreen').default} />
+        <Stack.Screen name="Profile" component={ProfileStack} />
       
       {/* Admin Flow */}
       <Stack.Screen name="AdminMain" component={AdminTabs} />

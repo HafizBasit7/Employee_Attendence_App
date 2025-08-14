@@ -1,85 +1,79 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, SafeAreaView } from 'react-native';
-import { colors } from '../../theme/colors'
+import React, { useEffect } from 'react';
+import { View, StyleSheet, Image } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { colors } from '../../theme/colors';
+import AppText from '../../components/AppText';
+import { useAuth } from '../../context/AuthContext';
 
-export default function LoginScreen({ navigation }) {
+export default function SplashScreen({ navigation }) {
+  const { isLoading, isAuthenticated, user } = useAuth();
+
+  useEffect(() => {
+    if (!isLoading) {
+      setTimeout(() => {
+        if (isAuthenticated && user) {
+          // Navigate based on user role
+          navigation.replace(user.isAdmin ? 'AdminMain' : 'Main');
+        } else {
+          navigation.replace('Login');
+        }
+      }, 2000);
+    }
+  }, [isLoading, isAuthenticated, user, navigation]);
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        {/* Logo Section */}
-        <View style={styles.logoContainer}>
-          {/* <Text style={styles.logoText}>K@TEC</Text>
-          <Text style={styles.subtitle}>ROHRLETTUNOBBAU UND INDUSTRIEBERVICE</Text> */}
-          <Image
-            source={require('../../../assets/Mask.png')} // Replace with your actual image path
-            style={styles.logoImage}
-            resizeMode="contain"
-          />
-
-
-        </View>
-        <View style={styles.logoContainer}>
-          <Image
-            source={require('../../../assets/Frame.png')} // Replace with your actual image path
-            style={styles.logoImage}
-            resizeMode="contain"
-          />
-
-        </View>
-
-        {/* Get Started Button */}
-        <TouchableOpacity 
-          style={styles.button} 
-          onPress={() => navigation.navigate('Login')} // Adjust navigation as needed
-        >
-          <Text style={styles.buttonText}>Get Started</Text>
-        </TouchableOpacity>
+    <SafeAreaView edges={['top']} style={styles.container}>
+      <View style={styles.content}>
+        <Image
+          source={require('../../../assets/Mask.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+        <AppText style={styles.title}>Employee Management</AppText>
+        <AppText style={styles.subtitle}>Attendance & Task Tracking</AppText>
+      </View>
+      
+      <View style={styles.footer}>
+        <AppText style={styles.version}>Version 1.0.0</AppText>
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  container: {
     flex: 1,
     backgroundColor: colors.background,
   },
-  container: {
+  content: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    paddingHorizontal: 40,
   },
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: 50,
+  logo: {
+    width: 150,
+    height: 150,
+    marginBottom: 30,
   },
-  logoText: {
-    fontSize: 48,
+  title: {
+    fontSize: 28,
     fontWeight: 'bold',
     color: colors.primary,
-    marginBottom: 10,
+    marginBottom: 8,
+    textAlign: 'center',
   },
   subtitle: {
-    fontSize: 10,
+    fontSize: 16,
     color: colors.textSecondary,
     textAlign: 'center',
-    maxWidth: 300,
   },
-  button: {
-    backgroundColor: colors.primary,
-    paddingVertical: 15,
-    paddingHorizontal: 40,
-    borderRadius: 38,
-    width: '100%',
-    maxWidth: 300,
+  footer: {
+    paddingBottom: 30,
     alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 30,
   },
-  buttonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
+  version: {
+    fontSize: 12,
+    color: colors.textSecondary,
   },
 });

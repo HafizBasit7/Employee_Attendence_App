@@ -1,35 +1,178 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Image, FlatList } from 'react-native';
-import Screen from '../components/Screen';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Image, FlatList, Modal, RefreshControl } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useQuery } from '@tanstack/react-query';
 import AppText from '../components/AppText';
 import { colors } from '../theme/colors';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import { attendanceService } from '../services/attendanceService';
+import { useAuth } from '../context/AuthContext';
+import Loader from '../components/Loader';
+import AlertModal from '../components/AlertModal';
+import NotificationIcon from '../components/NotificationIcon';
 
 export default function HistoryScreen({ navigation }) {
-  const [selectedDate, setSelectedDate] = useState(1); // Default to Dec 1
-  const [showNotifications, setShowNotifications] = useState(true); // Notification badge state
+  const [showNotifications, setShowNotifications] = useState(true);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [datePickerMode, setDatePickerMode] = useState('start'); // 'start' or 'end'
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
+  const [tempStartDate, setTempStartDate] = useState(null); // Temporary dates for modal
+  const [tempEndDate, setTempEndDate] = useState(null);
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    type: 'info',
+    title: '',
+    message: '',
+  });
 
-  // Calendar data for December 2024
-  const calendarWeeks = [
-    [27, 28, 29, 30, 1, 2, 3],
-    [4, 5, 6, 7, 8, 9, 10],
-    [11, 12, 13, 14, 15, 16, 17],
-    [18, 19, 20, 21, 22, 23, 24],
-    [25, 26, 27, 28, 29, 30, 31]
-  ];
+  const { user } = useAuth();
 
-  const attendanceRecords = [
-    { id: "1", date: "09", day: "THU", color: "#7BC043", punchIn: "09:08 AM", punchOut: "06:00 PM", totalHours: "08:52" },
-    { id: "2", date: "08", day: "WED", color: "#FFA500", punchIn: "-------", punchOut: "-------", totalHours: "00:00" },
-    { id: "3", date: "07", day: "TUE", color: "#FF4B4B", punchIn: "10:08 AM", punchOut: "06:05 PM", totalHours: "08:13" },
-    { id: "4", date: "06", day: "MON", color: "#7BC043", punchIn: "09:08 AM", punchOut: "06:05 PM", totalHours: "08:13" },
-    { id: "5", date: "03", day: "FRI", color: "#4CAF50", punchIn: "09:10 AM", punchOut: "06:09 PM", totalHours: "08:13" },
-  ];
+  // Fetch attendance history - only when dates are applied or initial load
+  const { 
+    data: attendanceData, 
+    isLoading, 
+    refetch, 
+    isRefetching 
+  } = useQuery({
+    queryKey: ['attendanceHistory', startDate, endDate],
+    queryFn: () => attendanceService.getMyHistory({
+      startDate: startDate?.toISOString(),
+      endDate: endDate?.toISOString(),
+      limit: 50,
+    }),
+    enabled: true, // Always enabled, but dates are only set on Apply Filter
+  });
+
+  const attendanceRecords = attendanceData?.data?.records || [];
+  const totalHours = attendanceData?.data?.totalHours || 0;
 
 
+
+  const formatDate = (date) => {
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit'
+    });
+  };
+
+  const formatTime = (dateString) => {
+    if (!dateString) return '--:--';
+    return new Date(dateString).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const formatDuration = (checkIn, checkOut) => {
+    if (!checkIn || !checkOut) return '--:--';
+    const diffMs = new Date(checkOut) - new Date(checkIn);
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+  };
+
+  const getAttendanceColor = (record) => {
+    if (!record.checkInAt || !record.checkOutAt) return colors.danger; // Red for incomplete
+    
+    const diffMs = new Date(record.checkOutAt) - new Date(record.checkInAt);
+    const hours = diffMs / (1000 * 60 * 60);
+    
+    if (hours >= 8) return colors.success; // Green for full day
+    if (hours >= 4) return colors.warning; // Orange for half day
+    return colors.danger; // Red for less than half day
+  };
+
+  const handleDatePickerChange = (event, selectedDate) => {
+    setShowDatePicker(false);
+    if (selectedDate) {
+      if (datePickerMode === 'start') {
+        setTempStartDate(selectedDate);
+      } else {
+        setTempEndDate(selectedDate);
+      }
+    }
+  };
+
+  const clearFilters = () => {
+    setStartDate(null);
+    setEndDate(null);
+    setTempStartDate(null);
+    setTempEndDate(null);
+    setShowFilterModal(false);
+  };
+
+  const applyFilters = () => {
+    // Validate dates before applying filter
+    if (!tempStartDate || !tempEndDate) {
+      setAlertConfig({
+        visible: true,
+        type: 'warning',
+        title: 'Validation Error',
+        message: 'Please select both start date and end date.',
+      });
+      return;
+    }
+
+    if (tempStartDate > tempEndDate) {
+      setAlertConfig({
+        visible: true,
+        type: 'warning',
+        title: 'Invalid Date Range',
+        message: 'Start date must be earlier than or equal to end date.',
+      });
+      return;
+    }
+
+    // Apply the dates and trigger the query
+    setStartDate(tempStartDate);
+    setEndDate(tempEndDate);
+    setShowFilterModal(false);
+  };
+
+  const closeAlert = () => {
+    setAlertConfig({ ...alertConfig, visible: false });
+  };
+
+  const renderAttendanceItem = ({ item: record }) => (
+    <View style={styles.card}>
+      {/* Date Section */}
+      <View style={[styles.dateContainer, { backgroundColor: getAttendanceColor(record) }]}>
+        <AppText style={styles.dateNumber}>
+          {new Date(record.checkInAt).getDate().toString().padStart(2, '0')}
+        </AppText>
+        <AppText style={styles.dateDay}>
+          {new Date(record.checkInAt).toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()}
+        </AppText>
+      </View>
+
+      {/* Details Section */}
+      <View style={styles.detailsHorizontal}>
+        <View style={styles.detailColumn}>
+          <AppText style={styles.time}>{formatTime(record.checkInAt)}</AppText>
+          <AppText style={styles.label}>Check In</AppText>
+        </View>
+        <View style={styles.detailColumn}>
+          <AppText style={styles.time}>{formatTime(record.checkOutAt)}</AppText>
+          <AppText style={styles.label}>Check Out</AppText>
+        </View>
+        <View style={styles.detailColumn}>
+          <AppText style={styles.time}>{formatDuration(record.checkInAt, record.checkOutAt)}</AppText>
+          <AppText style={styles.label}>Duration</AppText>
+        </View>
+      </View>
+    </View>
+  );
+
+  if (isLoading && !isRefetching) {
+    return <Loader visible={true} text="Loading attendance history..." />;
+  }
 
   return (
-    <Screen>
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
       {/* User Header with Notification */}
       <View style={styles.header}>
         <View style={styles.userInfo}>  
@@ -39,102 +182,177 @@ export default function HistoryScreen({ navigation }) {
     activeOpacity={0.7}
   >
           <Image 
-            source={require('../../assets/avatar.png')} 
+              source={
+                user?.profilePicture 
+                  ? { uri: user.profilePicture }
+                  : require('../../assets/avatar.png')
+              } 
             style={styles.avatar}
           />
           <View>
-            <AppText style={styles.userName}>Adam Bartford</AppText>
-            <AppText style={styles.taskCount}>7 tasks for you today</AppText>
+              <AppText style={styles.userName}>{user?.name || 'User'}</AppText>
+              <AppText style={styles.taskCount}>Total: {totalHours.toFixed(2)} hours</AppText>
           </View>
           </TouchableOpacity>
         </View>
-        <TouchableOpacity 
-          style={styles.notificationIcon}
-          onPress={() => setShowNotifications(false)}
-        >
-          <MaterialCommunityIcons name="bell" size={24} color={colors.textPrimary} />
-          {showNotifications && <View style={styles.notificationBadge} />}
-        </TouchableOpacity>
+        <NotificationIcon navigation={navigation} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.container}>
-        {/* Calendar Section */}
-        <View style={styles.section}>
-          <AppText style={styles.sectionTitle}>December 2024</AppText>
-          <View style={styles.calendar}>
-            {/* Calendar Header */}
-            <View style={styles.calendarRow}>
-              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day) => (
-                <View key={day} style={styles.calendarDayHeader}>
-                  <AppText style={styles.calendarDayText}>{day}</AppText>
+      {/* Filter Section */}
+      <View style={styles.filterSection}>
+        <TouchableOpacity 
+          style={styles.filterButton}
+          onPress={() => {
+            // Initialize temp dates with current applied dates when opening modal
+            setTempStartDate(startDate);
+            setTempEndDate(endDate);
+            setShowFilterModal(true);
+          }}
+        >
+          <Ionicons name="filter" size={20} color={colors.primary} />
+          <AppText style={styles.filterButtonText}>
+            {startDate || endDate ? 'Filtered' : 'Filter by Date'}
+          </AppText>
+        </TouchableOpacity>
+
+        {(startDate || endDate) && (
+          <TouchableOpacity 
+            style={styles.clearButton}
+            onPress={clearFilters}
+          >
+            <Ionicons name="close" size={16} color={colors.danger} />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Current Filter Display */}
+      {(startDate || endDate) && (
+        <View style={styles.filterDisplay}>
+          <AppText style={styles.filterText}>
+            {startDate && endDate 
+              ? `${formatDate(startDate)} - ${formatDate(endDate)}`
+              : startDate 
+                ? `From ${formatDate(startDate)}`
+                : `Until ${formatDate(endDate)}`
+            }
+          </AppText>
+        </View>
+      )}
+
+      {/* Total Hours Display */}
+      <View style={styles.totalHoursContainer}>
+        <AppText style={styles.totalHoursLabel}>Total Hours Worked</AppText>
+        <AppText style={styles.totalHoursValue}>{totalHours.toFixed(2)} hrs</AppText>
+      </View>
+
+      {/* Attendance List */}
+      <FlatList
+      showsVerticalScrollIndicator={false}
+        data={attendanceRecords}
+        renderItem={renderAttendanceItem}
+        keyExtractor={(item) => item._id}
+        contentContainerStyle={styles.container}
+        refreshControl={
+          <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <MaterialCommunityIcons name="clock-outline" size={64} color={colors.textSecondary} />
+            <AppText style={styles.emptyText}>No attendance records</AppText>
+            <AppText style={styles.emptySubtext}>
+              {startDate || endDate 
+                ? 'No records found for the selected period'
+                : 'Start checking in to see your attendance history'
+              }
+            </AppText>
                 </View>
-              ))}
+        }
+      />
+
+      {/* Filter Modal */}
+      <Modal
+        visible={showFilterModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowFilterModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <AppText style={styles.modalTitle}>Filter by Date Range</AppText>
+            
+            <View style={styles.dateFilterContainer}>
+              <TouchableOpacity 
+                style={styles.dateButton}
+                onPress={() => {
+                  setDatePickerMode('start');
+                  setShowDatePicker(true);
+                }}
+              >
+                <AppText style={styles.dateButtonLabel}>Start Date</AppText>
+                <AppText style={styles.dateButtonText}>
+                  {tempStartDate ? formatDate(tempStartDate) : 'Select Date'}
+                </AppText>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.dateButton}
+                onPress={() => {
+                  setDatePickerMode('end');
+                  setShowDatePicker(true);
+                }}
+              >
+                <AppText style={styles.dateButtonLabel}>End Date</AppText>
+                <AppText style={styles.dateButtonText}>
+                  {tempEndDate ? formatDate(tempEndDate) : 'Select Date'}
+                </AppText>
+              </TouchableOpacity>
             </View>
 
-            {/* Calendar Days */}
-            {calendarWeeks.map((week, weekIndex) => (
-              <View key={`week-${weekIndex}`} style={styles.calendarRow}>
-                {week.map((day) => (
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.cancelButton]} 
+                onPress={() => setShowFilterModal(false)}
+              >
+                <AppText style={styles.cancelButtonText}>Cancel</AppText>
+              </TouchableOpacity>
                   <TouchableOpacity
-                    key={`day-${day}`}
-                    style={[
-                      styles.calendarDay,
-                      day === selectedDate && styles.selectedDay
-                    ]}
-                    onPress={() => setSelectedDate(day)}
-                  >
-                    <AppText style={[
-                      styles.calendarDate,
-                      day === selectedDate && styles.selectedDateText
-                    ]}>
-                      {day}
-                    </AppText>
+                style={[styles.modalButton, styles.applyButton]} 
+                onPress={applyFilters}
+              >
+                <AppText style={styles.applyButtonText}>Apply Filter</AppText>
                   </TouchableOpacity>
-                ))}
               </View>
-            ))}
           </View>
         </View>
+      </Modal>
 
-        <FlatList
-  data={attendanceRecords}
-  keyExtractor={(item) => item.id}
-  scrollEnabled={false}
-  contentContainerStyle={{ marginTop: 8 }}
-  renderItem={({ item }) => (
-    <View style={styles.card}>
-      {/* Date Section */}
-      <View style={[styles.dateContainer, { backgroundColor: item.color }]}>
-        <AppText style={styles.dateNumber}>{item.date}</AppText>
-        <AppText style={styles.dateDay}>{item.day}</AppText>
-      </View>
+      {/* Date Picker */}
+                    {showDatePicker && (
+                <DateTimePicker
+                  value={datePickerMode === 'start' ? (tempStartDate || new Date()) : (tempEndDate || new Date())}
+                  mode="date"
+                  display="default"
+                  onChange={handleDatePickerChange}
+                  maximumDate={new Date()}
+                />
+              )}
 
-      {/* Details Section */}
-      <View style={styles.detailsHorizontal}>
-        <View style={styles.detailColumn}>
-          <AppText style={styles.time}>{item.punchIn}</AppText>
-          <AppText style={styles.label}>Punch In</AppText>
-        </View>
-        <View style={styles.detailColumn}>
-          <AppText style={styles.time}>{item.punchOut}</AppText>
-          <AppText style={styles.label}>Punch Out</AppText>
-        </View>
-        <View style={styles.detailColumn}>
-        <AppText style={styles.time}>{item.totalHours}</AppText>
-          <AppText style={styles.label}>Total Hours</AppText>
-        </View>
-      </View>
-    </View>
-  )}
-/>
-
-
-      </ScrollView>
-    </Screen>
+      <AlertModal
+        visible={alertConfig.visible}
+        type={alertConfig.type}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        onClose={closeAlert}
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   container: {
     padding: 20,
     paddingBottom: 100,
@@ -150,6 +368,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     paddingBottom: 10,
+    paddingTop: 0,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
@@ -158,18 +377,7 @@ const styles = StyleSheet.create({
   taskCount: { fontSize: 14, color: colors.textSecondary },
   userInfo:{flexDirection:"row", textAlign:"center"},
 
-  notificationIcon: {
-    position: 'relative',
-  },
-  notificationBadge: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.danger,
-  },
+
   section: {
     marginBottom: 24,
     color:colors.textPrimary,
@@ -269,6 +477,149 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: colors.textPrimary,
   },
-  
-  
+  filterSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: colors.primaryLight,
+    flex: 1,
+  },
+  filterButtonText: {
+    marginLeft: 8,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  clearButton: {
+    marginLeft: 12,
+    padding: 8,
+  },
+  filterDisplay: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    backgroundColor: colors.card,
+  },
+  filterText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  totalHoursContainer: {
+    backgroundColor: colors.card,
+    margin: 20,
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  totalHoursLabel: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: 4,
+  },
+  totalHoursValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.primary,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 24,
+    width: '90%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  dateFilterContainer: {
+    marginBottom: 24,
+  },
+  dateButton: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+  },
+  dateButtonLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: 4,
+  },
+  dateButtonText: {
+    fontSize: 16,
+    color: colors.textPrimary,
+    fontWeight: '500',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  applyButton: {
+    backgroundColor: colors.primary,
+  },
+  cancelButtonText: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  applyButtonText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '600',
+  },
 });

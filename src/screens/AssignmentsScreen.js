@@ -1,98 +1,198 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Image, FlatList, RefreshControl } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useQuery } from '@tanstack/react-query';
 import Screen from '../components/Screen';
-import AppHeader from '../components/AppHeader';
 import AppText from '../components/AppText';
 import { colors } from '../theme/colors';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { taskService } from '../services/taskService';
+import { useAuth } from '../context/AuthContext';
+import Loader from '../components/Loader';
+import AlertModal from '../components/AlertModal';
+import NotificationIcon from '../components/NotificationIcon';
 
 export default function AssignmentsScreen({ navigation }) {
   const [activeTab, setActiveTab] = useState('All');
   const [showNotifications, setShowNotifications] = useState(true);
+  const [page, setPage] = useState(1);
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    type: 'info',
+    title: '',
+    message: '',
+  });
 
-  const assignments = [
-    {
-      id: '1',
-      title: 'Abc Task',
-      description: 'Lorem ipsum dolor sit amet consectetur adipiscing elit odio, mattis quam tortor taciti aenean luctus nullam enim,',
-      createDate: 'Jan 05, 2024',
-      assignedBy: 'You',
-      priority: 'Medium',
-      startDate: 'Jan 07, 2024',
-      dueDate: 'Feb 25, 2024',
-      progress: '40%',
-      status: 'In-progress',
-      startTime: '4:30 PM',
-      endTime: '10:30 PM',
-      category: 'Lorem ipsum ______'
-    },
-    {
-      id: '2',
-      title: 'Abc Task',
-      description: 'Lorem ipsum dolor sit amet consectetur adipiscing elit odio, mattis quam tortor taciti aenean luctus nullam enim,',
-      createDate: 'Jan 05, 2024',
-      assignedBy: 'Admin',
-      priority: 'Medium',
-      startDate: 'Jan 07, 2024',
-      dueDate: 'Jan 08, 2024',
-      progress: '100% Completed',
-      status: 'Completed',
-      startTime: '9:00 AM',
-      endTime: '5:00 PM',
-      category: 'Development'
-    },
-    {
-      id: '3',
-      title: 'Abc Task',
-      description: 'Lorem ipsum dolor sit amet consectetur adipiscing elit odio, mattis quam tortor taciti aenean luctus nullam enim,',
-      createDate: 'Jan 05, 2024',
-      assignedBy: 'You',
-      priority: 'Medium',
-      startDate: 'Jan 07, 2024',
-      dueDate: 'Jan 08, 2024',
-      progress: '40%',
-      status: 'In-progress',
-      startTime: '10:00 AM',
-      endTime: '6:00 PM',
-      category: 'Design'
-    },
-  ];
+  const { user } = useAuth();
 
-  const filteredAssignments = activeTab === 'All'
-    ? assignments
-    : assignments.filter(item => item.status.toLowerCase().includes(activeTab.toLowerCase()));
-
-  const handleAssignmentPress = (assignment) => {
-    navigation.navigate('TaskScreen', { assignment });
+  // Get task status filter
+  const getStatusFilter = () => {
+    switch (activeTab) {
+      case 'In-progress':
+        return 'inprogress';
+      case 'Completed':
+        return 'completed';
+      default:
+        return undefined;
+    }
   };
 
+  // Fetch tasks with React Query
+  const { 
+    data: tasksData, 
+    isLoading, 
+    refetch, 
+    isRefetching 
+  } = useQuery({
+    queryKey: ['myTasks', activeTab, page],
+    queryFn: () => taskService.getMyTasks({
+      status: getStatusFilter(),
+      page,
+      limit: 10,
+    }),
+    keepPreviousData: true,
+  });
+
+  const tasks = tasksData?.data?.tasks || [];
+  const pagination = tasksData?.data?.pagination || {};
+
+  const handleAssignmentPress = (task) => {
+    navigation.navigate('TaskDetailsScreen', { task });
+  };
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    setPage(1); // Reset to first page when changing tabs
+  };
+
+  const loadMoreTasks = () => {
+    if (pagination.page < Math.ceil(pagination.total / 10)) {
+      setPage(prev => prev + 1);
+    }
+  };
+
+  const closeAlert = () => {
+    setAlertConfig({ ...alertConfig, visible: false });
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit'
+    });
+  };
+
+  const getPriorityColor = (priority) => {
+    switch (priority?.toLowerCase()) {
+      case 'high':
+        return colors.danger;
+      case 'medium':
+        return colors.warning;
+      case 'low':
+        return colors.info;
+      default:
+        return colors.textSecondary;
+    }
+  };
+
+  const renderTaskItem = ({ item: task }) => (
+    <TouchableOpacity
+      style={styles.assignmentCard}
+      onPress={() => handleAssignmentPress(task)}
+      activeOpacity={0.8}
+    >
+      {/* Assignment Header */}
+      <View style={styles.assignmentHeader}>
+        <AppText style={styles.assignmentTitle}>{task.title.length > 30 ? task.title.slice(0, 30) + '...' : task.title}</AppText>
+        <AppText style={styles.createDate}>
+          <AppText style={{ fontWeight: 'bold' }}>Created: </AppText>
+          {formatDate(task.createdAt)}
+        </AppText>
+      </View>
+
+      {/* Description */}
+      <AppText style={styles.description} numberOfLines={3}>
+        {task.description || 'No description provided'}
+      </AppText>
+
+      {/* Details Table */}
+      <View style={styles.detailsTable}>
+        <View style={styles.tableRow}>
+          <AppText style={styles.tableLabel}>Assigned by:</AppText>
+          <AppText style={styles.tableValue}>Admin</AppText>
+          <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(task.priority) }]}>
+            <AppText style={styles.priorityText}>
+              {task.priority?.charAt(0).toUpperCase() + task.priority?.slice(1) || 'Medium'}
+            </AppText>
+          </View>
+        </View>
+        <View style={styles.divider} />
+
+        <View style={styles.tableRow}>
+          <AppText style={styles.tableLabel}>Created:</AppText>
+          <AppText style={styles.tableValue}>{formatDate(task.createdAt)}</AppText>
+          <AppText style={styles.tableLabel}>Status:</AppText>
+          <AppText style={[styles.tableValue, { color: task.status === 'completed' ? colors.success : colors.warning }]}>
+            {task.status === 'inprogress' ? 'In Progress' : task.status.charAt(0).toUpperCase() + task.status.slice(1)}
+          </AppText>
+        </View>
+      </View>
+      <View style={styles.divider} />
+
+      {/* Progress Bar */}
+      <View style={styles.progressContainer}>
+        {task.status === 'completed' ? (
+          <AppText style={styles.completedText}>100% Completed</AppText>
+        ) : (
+          <View style={styles.progressBar}>
+            <View
+              style={[
+                styles.progressFill,
+                { width: `${task.progress || 0}%` }
+              ]}
+            />
+          </View>
+        )}
+      </View>
+      <View style={styles.progressRow}>
+        <AppText style={styles.sectionTitle}>Progress</AppText>
+        <AppText style={styles.progressPercentage}>
+          {task.status === 'completed' ? '100%' : `${task.progress || 0}%`}
+        </AppText>
+      </View>
+    </TouchableOpacity>
+  );
+
+  if (isLoading && !isRefetching) {
+    return <Loader visible={true} text="Loading tasks..." />;
+  }
+
   return (
-    <Screen>
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
       {/* User Header with Notification */}
       <View style={styles.header}>
         <View style={styles.userInfo}>
-        <TouchableOpacity 
-    style={styles.profileSection} 
-    onPress={() => navigation.navigate('Profile')} // change to your screen name
-    activeOpacity={0.7}
-  >
-          <Image
-            source={require('../../assets/avatar.png')}
-            style={styles.avatar}
-          />
-          <View>
-            <AppText style={styles.userName}>Adam Bartford</AppText>
-            <AppText style={styles.taskCount}>7 tasks for you today</AppText>
-          </View>
+          <TouchableOpacity 
+            style={styles.profileSection} 
+            onPress={() => navigation.navigate('Profile')}
+            activeOpacity={0.7}
+          >
+            <Image
+              source={
+                user?.profilePicture 
+                  ? { uri: user.profilePicture }
+                  : require('../../assets/avatar.png')
+              }
+              style={styles.avatar}
+            />
+            <View>
+              <AppText style={styles.userName}>{user?.name || 'User'}</AppText>
+              <AppText style={styles.taskCount}>{pagination.total || 0} tasks assigned</AppText>
+            </View>
           </TouchableOpacity>
         </View>
-        <TouchableOpacity
-          style={styles.notificationIcon}
-          onPress={() => setShowNotifications(false)}
-        >
-          <MaterialCommunityIcons name="bell" size={24} color={colors.textPrimary} />
-          {showNotifications && <View style={styles.notificationBadge} />}
-        </TouchableOpacity>
+        <NotificationIcon navigation={navigation} />
       </View>
 
       {/* Tab Filter */}
@@ -104,7 +204,7 @@ export default function AssignmentsScreen({ navigation }) {
               styles.tabButton,
               activeTab === tab && styles.activeTabButton
             ]}
-            onPress={() => setActiveTab(tab)}
+            onPress={() => handleTabChange(tab)}
           >
             <AppText style={[
               styles.tabText,
@@ -116,82 +216,59 @@ export default function AssignmentsScreen({ navigation }) {
         ))}
       </View>
 
-      {/* Assignments List */}
-      <ScrollView contentContainerStyle={styles.container}>
-        {filteredAssignments.map((assignment) => (
-          <TouchableOpacity
-            key={assignment.id}
-            style={styles.assignmentCard}
-            onPress={() => handleAssignmentPress(assignment)}
-            activeOpacity={0.8}
-          >
-            {/* Assignment Header */}
-            <View style={styles.assignmentHeader}>
-              <AppText style={styles.assignmentTitle}>{assignment.title}</AppText>
-              <AppText style={styles.createDate}>
-                <AppText style={{ fontWeight: 'bold' }}>Create Date: </AppText>
-                {assignment.createDate}
-              </AppText>
-
+      {/* Tasks List */}
+      <FlatList
+      showsVerticalScrollIndicator={false}
+        data={tasks}
+        renderItem={renderTaskItem}
+        keyExtractor={(item) => item._id}
+        contentContainerStyle={styles.container}
+        refreshControl={
+          <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
+        }
+        onEndReached={loadMoreTasks}
+        onEndReachedThreshold={0.1}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <MaterialCommunityIcons name="clipboard-text-outline" size={64} color={colors.textSecondary} />
+            <AppText style={styles.emptyText}>No tasks found</AppText>
+            <AppText style={styles.emptySubtext}>
+              {activeTab === 'All' ? 'You have no assigned tasks' : `No ${activeTab.toLowerCase()} tasks`}
+            </AppText>
+          </View>
+        }
+        ListFooterComponent={
+          isLoading && tasks.length > 0 ? (
+            <View style={styles.loadingFooter}>
+              <Loader visible={true} text="Loading more..." />
             </View>
+          ) : null
+        }
+      />
 
-            {/* Description */}
-            <AppText style={styles.description}>{assignment.description}</AppText>
-
-            {/* Details Table */}
-            <View style={styles.detailsTable}>
-              <View style={styles.tableRow}>
-                <AppText style={styles.tableLabel}>Assigned by:</AppText>
-                <AppText style={styles.tableValue}>{assignment.assignedBy}</AppText>
-                <View style={styles.priorityBadge}>
-                  <AppText style={styles.priorityText}>{assignment.priority}</AppText>
-                </View>
-              </View>
-              <View style={styles.divider} />
-
-              <View style={styles.tableRow}>
-                <AppText style={styles.tableLabel}>Start Date:</AppText>
-                <AppText style={styles.tableValue}>{assignment.startDate}</AppText>
-                <AppText style={styles.tableLabel}>Due Date:</AppText>
-                <AppText style={styles.tableValue}>{assignment.dueDate}</AppText>
-              </View>
-            </View>
-            <View style={styles.divider} />
-
-            {/* Progress Bar */}
-            <View style={styles.progressContainer}>
-              {assignment.progress.includes('%') ? (
-                <View style={styles.progressBar}>
-                  <View
-                    style={[
-                      styles.progressFill,
-                      { width: assignment.progress }
-                    ]}
-                  />
-                </View>
-              ) : (
-                <AppText style={styles.completedText}>{assignment.progress}</AppText>
-              )}
-            </View>
-            <View style={styles.progressRow}>
-              <AppText style={styles.sectionTitle}>Progress</AppText>
-              <AppText style={styles.progressPercentage}>{assignment.progress}</AppText>
-            </View>
-
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </Screen>
+      <AlertModal
+        visible={alertConfig.visible}
+        type={alertConfig.type}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        onClose={closeAlert}
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 20,
     paddingBottom: 10,
+    paddingTop: 0,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
@@ -220,29 +297,21 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     // marginTop: 4,
   },
-  notificationIcon: {
-    position: 'relative',
-  },
-  notificationBadge: {
-    position: 'absolute',
-    top: 2,
-    right: 2,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.danger,
-  },
+
   tabContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    justifyContent: 'space-around',
+    alignItems: 'center',
+   
   },
   tabButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     marginRight: 10,
+   
   },
   activeTabButton: {
     borderBottomWidth: 2,
@@ -269,9 +338,9 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   assignmentHeader: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 12,
   },
   assignmentTitle: {
@@ -371,5 +440,26 @@ const styles = StyleSheet.create({
     color: colors.primary,
     marginBottom: 16,
     textAlign: 'right'
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  loadingFooter: {
+    paddingVertical: 20,
   },
 });
