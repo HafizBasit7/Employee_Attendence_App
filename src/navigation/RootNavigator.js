@@ -1,6 +1,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import MainTabs from './tabs/MainTabs';
+import AdminTabs from './admin/AdminTabs';
 import TasksScreen from '../screens/TasksScreen';
 import ProfileStack from './ProfileStack';
 import SplashScreen from '../screens/AuthScreens/SplashScreen'
@@ -19,9 +20,13 @@ export default function RootNavigator() {
       <Stack.Screen name="ForgotPass" component= {ForgotPass} />
       <Stack.Screen name="VerifScreen" component= {VerificationCodeScreen} />
       <Stack.Screen name="ResetPass" component={ResetPasswordScreen} />
+      {/* User Flow */}
       <Stack.Screen name="Main" component={MainTabs} />
-      <Stack.Screen name="TaskScreen" component={TasksScreen}  />
+      <Stack.Screen name="TaskScreen" component={TasksScreen} />
       <Stack.Screen name="Profile" component={ProfileStack} />
+      
+      {/* Admin Flow */}
+      <Stack.Screen name="AdminMain" component={AdminTabs} />
       
     </Stack.Navigator>
   );

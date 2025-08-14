@@ -6,6 +6,7 @@ export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -50,7 +51,7 @@ export default function LoginScreen({ navigation }) {
             onChangeText={setPassword}
             secureTextEntry
           />
-          <View style={styles.rememberMeContainer}>
+          <View style={styles.optionsContainer}>
             <TouchableOpacity 
               style={styles.rememberMeButton}
               onPress={() => setRememberMe(!rememberMe)}
@@ -60,6 +61,15 @@ export default function LoginScreen({ navigation }) {
               </View>
               <Text style={styles.rememberMeText}>Remember Me</Text>
             </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.rememberMeButton}
+              onPress={() => setIsAdmin(!isAdmin)}
+            >
+              <View style={[styles.checkbox, isAdmin && styles.checkedBox]}>
+                {isAdmin && <View style={styles.checkmark} />}
+              </View>
+              <Text style={styles.rememberMeText}>Login as Admin</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -68,7 +78,12 @@ export default function LoginScreen({ navigation }) {
         {/* Login Section */}
         <View style={styles.section}>
          
-          <TouchableOpacity style={styles.loginButton} onPress={()=> {navigation.navigate('Main')}}>
+          <TouchableOpacity 
+            style={styles.loginButton} 
+            onPress={() => {
+              navigation.navigate(isAdmin ? 'AdminMain' : 'Main');
+            }}
+          >
             <Text style={styles.loginButtonText}>Login</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.forgotPassword} onPress={()=> {navigation.navigate('ForgotPass')}}>
@@ -136,9 +151,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     color: colors.textPrimary,
   },
-  rememberMeContainer: {
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
+  optionsContainer: {
+    flexDirection: 'column',
+    gap: 10,
   },
   rememberMeButton: {
     flexDirection: 'row',
