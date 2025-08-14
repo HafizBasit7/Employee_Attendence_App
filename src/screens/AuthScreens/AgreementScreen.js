@@ -23,7 +23,7 @@ export default function AgreementScreen({ navigation }) {
   `;
 
   const handleContinue = () => {
-    navigation.navigate('Main'); // Navigate to your main screen
+    navigation.navigate('Main'); 
   };
 
   return (
