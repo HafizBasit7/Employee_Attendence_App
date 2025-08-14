@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import DashboardScreen from '../../screens/admin/DashboardScreen';
 import EmployeesScreen from '../../screens/admin/EmployeesScreen';
 import ReportsScreen from '../../screens/admin/ReportsScreen';
+import AdminAssignmentsScreen from '../../screens/admin/AdminAssignmentsScreen';
 import { colors } from '../../theme/colors';
 
 const Tab = createBottomTabNavigator();
@@ -33,6 +34,15 @@ export default function AdminTabs() {
       <Tab.Screen
         name="Employees"
         component={EmployeesScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="people-outline" size={size} color={color} />
+          ),
+        }}
+      />
+         <Tab.Screen
+        name="AdminAssignmentsScreen"
+        component={AdminAssignmentsScreen}
         options={{
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="people-outline" size={size} color={color} />

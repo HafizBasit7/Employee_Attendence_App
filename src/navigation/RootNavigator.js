@@ -9,6 +9,8 @@ import LoginScreen from '../screens/AuthScreens/LoginScreen';
 import ForgotPass from '../screens/AuthScreens/ForgotPass';
 import VerificationCodeScreen from '../screens/AuthScreens/VerificationCodeScreen';
 import ResetPasswordScreen from '../screens/AuthScreens/ResetPassw';
+import EmpProfile from '../screens/admin/EmpProfile';
+import AgreementScreen from '../screens/AuthScreens/AgreementScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -17,6 +19,7 @@ export default function RootNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="SplashScreen" component= {SplashScreen} />
       <Stack.Screen name="Login" component= {LoginScreen} />
+      <Stack.Screen name="AgreementScreen" component= {AgreementScreen} />
       <Stack.Screen name="ForgotPass" component= {ForgotPass} />
       <Stack.Screen name="VerifScreen" component= {VerificationCodeScreen} />
       <Stack.Screen name="ResetPass" component={ResetPasswordScreen} />
@@ -29,6 +32,7 @@ export default function RootNavigator() {
       
       {/* Admin Flow */}
       <Stack.Screen name="AdminMain" component={AdminTabs} />
+      <Stack.Screen name="EmpProfile" component={EmpProfile} />
       
     </Stack.Navigator>
   );
