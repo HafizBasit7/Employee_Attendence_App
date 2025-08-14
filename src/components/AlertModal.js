@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 const AlertModal = ({ 
   visible = false, 
-  type = 'info', // 'success', 'error', 'warning', 'info'
+  type = 'info', // 'success', 'error', 'warning', 'infoq '
   title, 
   message, 
   onClose,
