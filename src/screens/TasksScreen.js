@@ -4,12 +4,13 @@ import Screen from '../components/Screen';
 import AppText from '../components/AppText';
 import { colors } from '../theme/colors';
 import AppHeader from '../components/AppHeader';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function TaskDetailsScreen({ route, navigation }) {
   const { assignment } = route.params;
 
   return (
-    <Screen>
+    <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
       <AppHeader 
         title="Abc Task Details" 
         onBack={() => navigation.goBack()}
@@ -17,8 +18,8 @@ export default function TaskDetailsScreen({ route, navigation }) {
       />
       
       <ScrollView 
-        contentContainerStyle={styles.container}
-        showsVerticalScrollIndicator={false}
+       contentContainerStyle={styles.scrollContent}
+       showsVerticalScrollIndicator={false}
       >
         {/* Progress Section */}
         <View style={styles.progressContainer}>
@@ -91,15 +92,19 @@ export default function TaskDetailsScreen({ route, navigation }) {
           </TouchableOpacity>
         )}
       </ScrollView>
-    </Screen>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   container: {
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 40,
+    flex: 1,
+    backgroundColor: colors.background,
+    // paddingBottom: 40,
   },
   section: {
     marginBottom: 32,
@@ -131,7 +136,7 @@ const styles = StyleSheet.create({
   detailsContainer: {
     backgroundColor: colors.card,
     borderRadius: 12,
-    padding: 20,
+    padding: 16, // was 2 before
     marginBottom: 24,
   },
   detailItem: {
@@ -154,7 +159,7 @@ const styles = StyleSheet.create({
   completeButton: {
     backgroundColor: colors.primary,
     borderRadius: 8,
-    paddingVertical: 16,
+    paddingVertical: 10,
     alignItems: 'center',
     marginTop: 8,
     elevation: 2,

@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Image } from 'react-native';
 import { colors } from '../../theme/colors';
+import { useAuth } from '../../context/AuthContext';
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
+  const { setRole } = useAuth();
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -68,8 +70,11 @@ export default function LoginScreen({ navigation }) {
         {/* Login Section */}
         <View style={styles.section}>
          
-          <TouchableOpacity style={styles.loginButton} onPress={()=> {navigation.navigate('Main')}}>
+          <TouchableOpacity style={styles.loginButton} onPress={()=> { setRole('user'); navigation.navigate('AgreementScreen')}}>
             <Text style={styles.loginButtonText}>Login</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.loginButton, { backgroundColor: colors.success }]} onPress={()=> { setRole('admin'); navigation.navigate('Main')}}>
+            <Text style={styles.loginButtonText}>Login as Admin</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.forgotPassword} onPress={()=> {navigation.navigate('ForgotPass')}}>
             <Text style={styles.forgotPasswordText}>Forgot Password?</Text>

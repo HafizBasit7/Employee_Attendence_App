@@ -64,11 +64,11 @@ export default function HistoryScreen({ navigation }) {
           <View style={styles.calendar}>
             {/* Calendar Header */}
             <View style={styles.calendarRow}>
-              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day) => (
-                <View key={day} style={styles.calendarDayHeader}>
-                  <AppText style={styles.calendarDayText}>{day}</AppText>
-                </View>
-              ))}
+            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => (
+  <View key={`${day}-${index}`} style={styles.calendarDayHeader}>
+    <AppText style={styles.calendarDayText}>{day}</AppText>
+  </View>
+))}
             </View>
 
             {/* Calendar Days */}

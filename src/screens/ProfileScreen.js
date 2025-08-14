@@ -2,15 +2,18 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Switch, SafeAreaView, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ConfirmationModal from '../components/ConfirmationModal';
+import { useAuth } from '../context/AuthContext';
 
 export default function ProfileScreen({ navigation }) {
   const [isDarkMode, setIsDarkMode] = React.useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const { setRole } = useAuth();
 
 
   const handleLogout = () => {
     setShowLogoutModal(false);
     // Add your logout logic here
+    setRole('user');
     navigation.navigate('SplashScreen');
   };
 
